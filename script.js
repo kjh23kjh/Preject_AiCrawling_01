@@ -64,7 +64,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
   return data.articles || [];
 }*/
 
-async function fetchNews(query) {
+/*async function fetchNews(query) {
   const response = await fetch(`/api/naver-news?query=${encodeURIComponent(query)}`);
 
   const data = await response.json().catch(() => ({}));
@@ -82,6 +82,27 @@ async function fetchNews(query) {
     sourceCountry: "KS",
     seendate: article.pubDate,
     socialimage: "",
+  }));
+}*/
+
+async function fetchNews(query) {
+  const response = await fetch(`/api/naver-news?query=${encodeURIComponent(query)}`);
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "뉴스 API 요청 실패");
+  }
+
+  return data.articles.map((article) => ({
+    title: article.title,
+    description: article.description,
+    url: article.url,
+    domain: article.domain,
+    language: article.language,
+    sourceCountry: article.sourceCountry,
+    seendate: article.pubDate,
+    socialimage: article.socialimage,
   }));
 }
 
