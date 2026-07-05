@@ -67,11 +67,11 @@ document.querySelectorAll(".tab").forEach((tab) => {
 async function fetchNews(query) {
   const response = await fetch(`/api/naver-news?query=${encodeURIComponent(query)}`);
 
-  if (!response.ok) {
-    throw new Error("네이버 뉴스 API 요청 실패");
-  }
+  const data = await response.json().catch(() => ({}));
 
-  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || data.message || `네이버 뉴스 API 요청 실패 (${response.status})`);
+  }
 
   return data.articles.map((article) => ({
     title: article.title,
