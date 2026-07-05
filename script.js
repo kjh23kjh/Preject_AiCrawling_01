@@ -270,7 +270,14 @@ function hideLoading() {
 
 function formatDate(dateText) {
   if (!dateText) return "날짜 없음";
-  return String(dateText).slice(0, 8);
+
+  const date = new Date(dateText);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(dateText).slice(0, 10);
+  }
+
+  return date.toLocaleDateString("ko-KR");
 }
 
 function escapeHTML(value) {
