@@ -7,26 +7,37 @@ export default async function handler(req, res) {
     });
   }
 
+  const domesticResult = await safeRun(() => fetchNaverNews(query));
+  const foreignResult = await safeRun(() => fetchForeignNews(query));
+
+  const articles = removeDuplicateArticles([
+    ...domesticResult.data,
+    ...foreignResult.data,
+  ]);
+
+  return res.status(200).json({
+    total: articles.length,
+    articles,
+    debug: {
+      domesticError: domesticResult.error,
+      foreignError: foreignResult.error,
+    },
+  });
+}
+
+async function safeRun(task) {
   try {
-    const [domesticArticles, foreignArticles] = await Promise.all([
-      fetchNaverNews(query),
-      fetchForeignNews(query),
-    ]);
-
-    const articles = removeDuplicateArticles([
-      ...domesticArticles,
-      ...foreignArticles,
-    ]);
-
-    return res.status(200).json({
-      total: articles.length,
-      articles,
-    });
+    const data = await task();
+    return {
+      data,
+      error: null,
+    };
   } catch (error) {
-    return res.status(500).json({
-      error: "뉴스 수집 중 오류가 발생했습니다.",
-      message: error.message,
-    });
+    console.error(error);
+    return {
+      data: [],
+      error: error.message,
+    };
   }
 }
 
@@ -78,12 +89,12 @@ async function fetchNaverNews(query) {
 }
 
 async function fetchForeignNews(query) {
-  const englishQuery = await translateQueryToEnglish(query);
+  const foreignQuery = makeForeignQuery(query);
 
   const apiUrl =
     "https://api.gdeltproject.org/api/v2/doc/doc?" +
     new URLSearchParams({
-      query: englishQuery,
+      query: foreignQuery,
       mode: "artlist",
       format: "json",
       maxrecords: "10",
@@ -125,26 +136,24 @@ async function fetchForeignNews(query) {
     }));
 }
 
-async function translateQueryToEnglish(query) {
-  try {
-    const url =
-      "https://api.mymemory.translated.net/get?" +
-      new URLSearchParams({
-        q: query,
-        langpair: "ko|en",
-      });
+function makeForeignQuery(query) {
+  const lower = query.toLowerCase().trim();
 
-    const response = await fetch(url);
+  const dictionary = {
+    "인공지능": "artificial intelligence",
+    "ai": "artificial intelligence",
+    "반도체": "semiconductor",
+    "삼성전자": "Samsung Electronics",
+    "기후변화": "climate change",
+    "기후 변화": "climate change",
+    "전기차": "electric vehicle",
+    "배터리": "battery",
+    "케이팝": "K-pop",
+    "k-pop": "K-pop",
+    "kpop": "K-pop",
+  };
 
-    if (!response.ok) {
-      return query;
-    }
-
-    const data = await response.json();
-    return data?.responseData?.translatedText || query;
-  } catch {
-    return query;
-  }
+  return dictionary[lower] || query;
 }
 
 function removeDuplicateArticles(articles) {
@@ -177,87 +186,3 @@ function getDomain(url) {
     return "출처 미상";
   }
 }
-
-/*export default async function handler(req, res) {
-  const query = req.query.query || "";
-
-  if (!query.trim()) {
-    return res.status(400).json({
-      error: "검색어가 없습니다.",
-    });
-  }
-
-  const clientId = process.env.NAVER_CLIENT_ID;
-  const clientSecret = process.env.NAVER_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    return res.status(500).json({
-      error: "네이버 API 키가 설정되지 않았습니다.",
-    });
-  }
-
-  const apiUrl =
-    "https://openapi.naver.com/v1/search/news.json?" +
-    new URLSearchParams({
-      query,
-      display: "20",
-      start: "1",
-      sort: "date",
-    });
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        "X-Naver-Client-Id": clientId,
-        "X-Naver-Client-Secret": clientSecret,
-      },
-    });
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "네이버 뉴스 API 요청 실패",
-      });
-    }
-
-    const data = await response.json();
-
-    const articles = data.items.map((item) => ({
-      title: removeHtmlTags(item.title),
-      description: removeHtmlTags(item.description),
-      url: item.link,
-      originallink: item.originallink,
-      pubDate: item.pubDate,
-      domain: getDomain(item.link),
-      type: "domestic",
-    }));
-
-    return res.status(200).json({
-      total: data.total,
-      articles,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: "서버 오류가 발생했습니다.",
-      message: error.message,
-    });
-  }
-}
-
-function removeHtmlTags(text) {
-  return String(text || "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
-}
-
-function getDomain(url) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "출처 미상";
-  }
-}*/
