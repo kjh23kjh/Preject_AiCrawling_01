@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   }
 
   const domesticResult = await safeRun(() => fetchNaverNews(query));
-  const foreignResult = await safeRun(() => fetchForeignNews(query));
+  const foreignResult = await safeRun(() => fetchGoogleForeignNews(query));
 
   const articles = removeDuplicateArticles([
     ...domesticResult.data,
@@ -28,16 +28,10 @@ export default async function handler(req, res) {
 async function safeRun(task) {
   try {
     const data = await task();
-    return {
-      data,
-      error: null,
-    };
+    return { data, error: null };
   } catch (error) {
     console.error(error);
-    return {
-      data: [],
-      error: error.message,
-    };
+    return { data: [], error: error.message };
   }
 }
 
@@ -69,7 +63,7 @@ async function fetchNaverNews(query) {
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`네이버 뉴스 API 요청 실패: ${response.status} / ${text}`);
+    throw new Error(`네이버 뉴스 API 요청 실패: ${response.status}`);
   }
 
   const data = JSON.parse(text);
@@ -88,52 +82,67 @@ async function fetchNaverNews(query) {
   }));
 }
 
-async function fetchForeignNews(query) {
+async function fetchGoogleForeignNews(query) {
   const foreignQuery = makeForeignQuery(query);
 
-  const apiUrl =
-    "https://api.gdeltproject.org/api/v2/doc/doc?" +
+  const rssUrl =
+    "https://news.google.com/rss/search?" +
     new URLSearchParams({
-      query: foreignQuery,
-      mode: "artlist",
-      format: "json",
-      maxrecords: "10",
-      sort: "HybridRel",
+      q: foreignQuery,
+      hl: "en-US",
+      gl: "US",
+      ceid: "US:en",
     });
 
-  const response = await fetch(apiUrl);
+  const response = await fetch(rssUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+    },
+  });
 
   if (!response.ok) {
-    throw new Error(`해외 뉴스 API 요청 실패: ${response.status}`);
+    throw new Error(`해외 뉴스 RSS 요청 실패: ${response.status}`);
   }
 
-  const data = await response.json();
+  const xml = await response.text();
+  const items = parseRssItems(xml).slice(0, 10);
 
-  return (data.articles || [])
-    .filter((item) => {
-      const language = String(item.language || "").toLowerCase();
-      const country = String(item.sourcecountry || item.sourceCountry || "").toUpperCase();
-      const domain = String(item.domain || "").toLowerCase();
+  return items.map((item) => ({
+    title: item.title || "제목 없음",
+    description: item.description || "",
+    url: item.link,
+    originallink: item.link,
+    pubDate: item.pubDate,
+    domain: getDomain(item.link),
+    language: "English",
+    sourceCountry: "US",
+    socialimage: "",
+    type: "foreign",
+  }));
+}
 
-      return (
-        country !== "KS" &&
-        country !== "KR" &&
-        !language.includes("korean") &&
-        !domain.endsWith(".kr")
-      );
-    })
-    .map((item) => ({
-      title: item.title || "제목 없음",
-      description: "",
-      url: item.url,
-      originallink: item.url,
-      pubDate: item.seendate,
-      domain: item.domain || getDomain(item.url),
-      language: item.language || "English",
-      sourceCountry: item.sourcecountry || item.sourceCountry || "FOREIGN",
-      socialimage: item.socialimage || "",
-      type: "foreign",
-    }));
+function parseRssItems(xml) {
+  const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+
+  return itemBlocks.map((block) => {
+    const title = getXmlValue(block, "title");
+    const link = getXmlValue(block, "link");
+    const pubDate = getXmlValue(block, "pubDate");
+    const description = removeHtmlTags(getXmlValue(block, "description"));
+
+    return {
+      title: decodeXml(title),
+      link: decodeXml(link),
+      pubDate: decodeXml(pubDate),
+      description: decodeXml(description),
+    };
+  });
+}
+
+function getXmlValue(block, tagName) {
+  const regex = new RegExp(`<${tagName}>([\\s\\S]*?)<\\/${tagName}>`);
+  const match = block.match(regex);
+  return match ? match[1] : "";
 }
 
 function makeForeignQuery(query) {
@@ -174,6 +183,18 @@ function removeHtmlTags(text) {
     .replace(/<[^>]*>/g, "")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function decodeXml(text) {
+  return String(text || "")
+    .replace(/<!\[CDATA\[/g, "")
+    .replace(/\]\]>/g, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
