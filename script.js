@@ -49,7 +49,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
 });
 
 // GDELT 뉴스 API 사용: 별도 API 키 없이 뉴스 기사 목록을 가져오기 위한 용도
-async function fetchNews(query) {
+/*async function fetchNews(query) {
   const encodedQuery = encodeURIComponent(query);
   const url =
     `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodedQuery}` +
@@ -62,6 +62,27 @@ async function fetchNews(query) {
 
   const data = await response.json();
   return data.articles || [];
+}*/
+
+async function fetchNews(query) {
+  const response = await fetch(`/api/naver-news?query=${encodeURIComponent(query)}`);
+
+  if (!response.ok) {
+    throw new Error("네이버 뉴스 API 요청 실패");
+  }
+
+  const data = await response.json();
+
+  return data.articles.map((article) => ({
+    title: article.title,
+    description: article.description,
+    url: article.url,
+    domain: article.domain,
+    language: "Korean",
+    sourceCountry: "KS",
+    seendate: article.pubDate,
+    socialimage: "",
+  }));
 }
 
 async function prepareArticles(articles, query) {
