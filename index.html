@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 뉴스 자동 요약 브리핑</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">NewsBrief AI</div>
+    <nav>
+      <a href="#search">검색</a>
+      <a href="#results">결과</a>
+      <a href="#about">소개</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <p class="badge">국내·해외 기사 수집 · 번역 · 요약</p>
+        <h1>궁금한 주제를 입력하면<br />뉴스를 자동으로 브리핑합니다.</h1>
+        <p class="desc">
+          검색어를 기준으로 국내/해외 기사를 가져오고, 외국어 제목은 한국어로 번역한 뒤
+          핵심 내용을 짧게 요약해 보여주는 웹 프로젝트입니다.
+        </p>
+      </div>
+
+      <div class="hero-card">
+        <h2>오늘의 브리핑 예시</h2>
+        <p>AI 반도체, 기후 변화, K-POP, 국제 경제 등 원하는 키워드로 검색할 수 있습니다.</p>
+      </div>
+    </section>
+
+    <section id="search" class="search-section">
+      <h2>뉴스 검색</h2>
+      <p class="section-desc">예: 인공지능, 반도체, climate change, K-pop</p>
+
+      <form id="searchForm" class="search-box">
+        <input
+          id="queryInput"
+          type="text"
+          placeholder="궁금한 주제를 입력하세요"
+          autocomplete="off"
+          required
+        />
+        <button type="submit">검색하기</button>
+      </form>
+
+      <div class="options">
+        <label>
+          <input type="checkbox" id="translateToggle" checked />
+          해외 기사 제목 한국어 번역
+        </label>
+        <label>
+          <input type="checkbox" id="summaryToggle" checked />
+          자동 요약 생성
+        </label>
+      </div>
+    </section>
+
+    <section id="statusArea" class="status-area hidden">
+      <div class="loader"></div>
+      <p id="statusText">기사를 수집하는 중입니다...</p>
+    </section>
+
+    <section id="briefing" class="briefing hidden">
+      <h2>AI 브리핑 요약</h2>
+      <div id="briefingText" class="briefing-box"></div>
+    </section>
+
+    <section id="results" class="results-section">
+      <div class="result-header">
+        <h2>기사 결과</h2>
+        <div class="tabs">
+          <button class="tab active" data-filter="all">전체</button>
+          <button class="tab" data-filter="domestic">국내</button>
+          <button class="tab" data-filter="foreign">해외</button>
+        </div>
+      </div>
+
+      <div id="newsGrid" class="news-grid"></div>
+    </section>
+
+    <section id="about" class="about-section">
+      <h2>프로젝트 설명</h2>
+      <div class="about-grid">
+        <article>
+          <h3>1. 기사 수집</h3>
+          <p>사용자가 입력한 검색어를 기준으로 뉴스 데이터를 가져옵니다.</p>
+        </article>
+        <article>
+          <h3>2. 국내/해외 분류</h3>
+          <p>기사 언어와 도메인을 기준으로 국내 기사와 해외 기사를 구분합니다.</p>
+        </article>
+        <article>
+          <h3>3. 번역 및 요약</h3>
+          <p>해외 기사는 제목을 한국어로 번역하고, 전체 결과를 짧은 브리핑으로 정리합니다.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 NewsBrief AI Project</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
